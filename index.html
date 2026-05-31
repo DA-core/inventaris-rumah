@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Inventaris Rumah</title>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap');
+:root{--bg:#0f0e0c;--surface:#1a1917;--card:#242220;--accent:#f5c842;--accent2:#e87c3e;--text:#f0ede8;--muted:#7a7670;--green:#5ecf7a;--red:#e85e5e;--border:#2e2c29;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding-bottom:60px;}
+
+header{background:var(--surface);border-bottom:1px solid var(--border);padding:16px 20px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;}
+.logo{font-size:1.1rem;font-weight:800;}.logo span{color:var(--accent);}
+.badge{background:var(--accent);color:#000;font-family:'Space Mono',monospace;font-size:0.6rem;padding:3px 8px;border-radius:20px;font-weight:700;cursor:pointer;}
+
+.tabs{display:flex;background:var(--surface);border-bottom:1px solid var(--border);padding:0 16px;}
+.tab{padding:12px 14px;font-size:0.8rem;font-weight:600;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;transition:all 0.2s;white-space:nowrap;}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+
+.page{display:none;padding:16px;}.page.active{display:block;}
+
+/* SCANNER */
+.scanner-box{background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:14px;}
+#qr-reader{width:100%!important;border:none!important;background:#000;}
+#qr-reader video{width:100%!important;border-radius:0!important;}
+#qr-reader__dashboard{display:none!important;}
+.scan-placeholder{height:200px;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--muted);font-size:0.85rem;text-align:center;}
+.scan-placeholder .icon{font-size:2.5rem;}
+.scanner-controls{padding:14px;display:flex;flex-direction:column;gap:8px;}
+
+.btn{width:100%;padding:13px;border:none;border-radius:10px;font-family:'Syne',sans-serif;font-weight:700;font-size:0.9rem;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:all 0.15s;}
+.btn:active{transform:scale(0.98);}
+.btn-primary{background:var(--accent);color:#000;}
+.btn-ghost{background:transparent;border:1px solid var(--border);color:var(--text);}
+.btn-green{background:var(--green);color:#000;}
+.btn-orange{background:var(--accent2);color:#fff;}
+.btn-red{background:var(--red);color:#fff;}
+.action-row{display:flex;gap:8px;}.action-row .btn{flex:1;}
+
+/* RESULT CARD */
+.result-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:14px;display:none;}
+.result-card.visible{display:block;}
+.rc-label{font-family:'Space Mono',monospace;font-size:0.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px;}
+.rc-code{font-family:'Space Mono',monospace;font-size:1.4rem;font-weight:700;color:var(--accent);margin-bottom:10px;}
+.rc-name{font-size:1rem;font-weight:700;margin-bottom:3px;}
+.rc-meta{font-size:0.75rem;color:var(--muted);font-family:'Space Mono',monospace;}
+.qty-row{display:flex;align-items:center;gap:10px;margin:14px 0;}
+.qty-label{font-size:0.82rem;color:var(--muted);flex:1;}
+.qty-controls{display:flex;align-items:center;gap:10px;}
+.qty-btn{width:34px;height:34px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:1.2rem;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+.qty-val{font-family:'Space Mono',monospace;font-size:1.2rem;font-weight:700;min-width:28px;text-align:center;}
+
+/* LIST */
+.list-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+.list-header h2{font-size:1rem;font-weight:800;}
+.count-badge{background:var(--card);border:1px solid var(--border);font-family:'Space Mono',monospace;font-size:0.65rem;padding:3px 10px;border-radius:20px;color:var(--muted);}
+.search-bar{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 14px;color:var(--text);font-family:'Syne',sans-serif;font-size:0.88rem;width:100%;margin-bottom:12px;outline:none;}
+.search-bar:focus{border-color:var(--accent);}
+.search-bar::placeholder{color:var(--muted);}
+.filter-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;}
+.fbtn{background:var(--card);border:1px solid var(--border);color:var(--muted);font-family:'Space Mono',monospace;font-size:0.6rem;padding:4px 10px;border-radius:20px;cursor:pointer;white-space:nowrap;}
+.fbtn.active{background:var(--accent);color:#000;border-color:var(--accent);}
+.item-row{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:7px;display:flex;align-items:center;gap:10px;}
+.item-icon{width:40px;height:40px;background:var(--surface);border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0;}
+.item-info{flex:1;min-width:0;}
+.item-info .name{font-weight:600;font-size:0.85rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.item-info .code{font-family:'Space Mono',monospace;font-size:0.6rem;color:var(--muted);margin-top:2px;}
+.item-info .upd{font-size:0.6rem;color:var(--muted);margin-top:1px;}
+.item-qty{text-align:right;flex-shrink:0;}
+.item-qty .qty{font-family:'Space Mono',monospace;font-size:1.2rem;font-weight:700;}
+.item-qty .unit{font-size:0.6rem;color:var(--muted);display:block;}
+.qty-low{color:var(--red);} .qty-ok{color:var(--green);}
+.empty-state{text-align:center;padding:40px;color:var(--muted);font-size:0.82rem;}
+
+/* SETUP */
+.setup-step{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px;}
+.setup-step h3{font-size:0.85rem;font-weight:700;color:var(--accent);margin-bottom:6px;}
+.setup-step p{font-size:0.78rem;color:var(--muted);line-height:1.6;}
+.setup-step code{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:7px 10px;font-family:'Space Mono',monospace;font-size:0.65rem;display:block;margin-top:7px;color:var(--green);overflow-x:auto;white-space:pre;}
+.tip{background:rgba(245,200,66,0.08);border:1px solid rgba(245,200,66,0.2);border-radius:10px;padding:12px;font-size:0.76rem;color:var(--accent);margin-top:6px;line-height:1.6;}
+
+/* TOAST */
+.toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--green);color:#000;padding:9px 20px;border-radius:30px;font-weight:700;font-size:0.82rem;opacity:0;transition:all 0.3s;z-index:999;white-space:nowrap;pointer-events:none;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+.toast.err{background:var(--red);color:#fff;}
+
+/* RESET BTN */
+.reset-section{background:rgba(232,94,94,0.07);border:1px solid rgba(232,94,94,0.2);border-radius:12px;padding:14px;margin-bottom:14px;}
+.reset-section p{font-size:0.78rem;color:var(--muted);margin-bottom:10px;line-height:1.5;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Inventaris<span>.</span>Rumah</div>
+  <div class="badge" id="totalBadge">121 barang</div>
+</header>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('scan',this)">📷 Scan</div>
+  <div class="tab" onclick="switchTab('list',this)">📦 Stok</div>
+  <div class="tab" onclick="switchTab('setup',this)">⚙️ Setup</div>
+</div>
+
+<!-- SCAN -->
+<div class="page active" id="tab-scan">
+  <div class="scanner-box">
+    <div id="qr-placeholder" class="scan-placeholder">
+      <div class="icon">📷</div>
+      <div>Tekan tombol di bawah<br>untuk scan QR Code</div>
+    </div>
+    <div id="qr-reader" style="display:none;"></div>
+  </div>
+  <div class="scanner-controls">
+    <button class="btn btn-primary" id="btnScan" onclick="toggleScanner()">📷 Mulai Scan QR Code</button>
+    <button class="btn btn-ghost" onclick="demoScan()">✨ Coba Demo (tanpa kamera)</button>
+  </div>
+
+  <div class="result-card" id="resultCard">
+    <div class="rc-label">Kode Terdeteksi</div>
+    <div class="rc-code" id="rcCode">—</div>
+    <div class="rc-name" id="rcName">—</div>
+    <div class="rc-meta" id="rcMeta">—</div>
+    <div class="qty-row">
+      <div class="qty-label">Jumlah</div>
+      <div class="qty-controls">
+        <button class="qty-btn" onclick="changeQty(-1)">−</button>
+        <div class="qty-val" id="qtyVal">1</div>
+        <button class="qty-btn" onclick="changeQty(1)">+</button>
+      </div>
+    </div>
+    <div class="action-row">
+      <button class="btn btn-green" onclick="saveItem('tambah')">✅ Tambah</button>
+      <button class="btn btn-orange" onclick="saveItem('kurang')">📤 Kurang</button>
+    </div>
+    <button class="btn btn-ghost" style="margin-top:8px;" onclick="hideResult()">Batal</button>
+  </div>
+</div>
+
+<!-- STOK -->
+<div class="page" id="tab-list">
+  <div class="list-header">
+    <h2>Stok Barang</h2>
+    <div class="count-badge" id="countBadge">—</div>
+  </div>
+  <input class="search-bar" type="text" placeholder="Cari nama atau kode…" oninput="filterList(this.value)">
+  <div class="filter-row" id="filterRow"></div>
+  <div id="itemList"></div>
+</div>
+
+<!-- SETUP -->
+<div class="page" id="tab-setup">
+  <h2 style="font-size:1rem;font-weight:800;margin-bottom:14px;">Hubungkan ke Google Sheets</h2>
+
+  <div class="reset-section">
+    <p>⚠️ Jika stok masih menampilkan data lama (kode 1120, 2240, dll), tekan tombol di bawah untuk reset dan muat ulang 121 barang.</p>
+    <button class="btn btn-red" onclick="resetData()">🔄 Reset &amp; Muat Ulang 121 Barang</button>
+  </div>
+
+  <div class="setup-step">
+    <h3>01 — URL Google Apps Script</h3>
+    <p>Paste URL Apps Script Anda di sini. Setelah itu setiap scan otomatis tercatat ke Google Sheets.</p>
+    <input id="sheetsUrl" type="text" placeholder="https://script.google.com/macros/s/..." 
+      style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px;color:var(--text);font-family:'Space Mono',monospace;font-size:0.68rem;width:100%;outline:none;margin-top:8px;">
+    <button class="btn btn-primary" style="margin-top:8px;" onclick="saveUrl()">💾 Simpan URL</button>
+  </div>
+
+  <div class="setup-step">
+    <h3>02 — Struktur Google Sheets</h3>
+    <p>Jalankan fungsi <code>initSheets()</code> di Apps Script untuk membuat sheet otomatis. Pastikan kode Apps Script sudah dipaste dari file yang sudah diberikan sebelumnya.</p>
+  </div>
+
+  <div class="setup-step">
+    <h3>03 — Deploy Web App</h3>
+    <p>Deploy → New Deployment → Web App → "Anyone" → copy URL → paste di kolom atas.</p>
+  </div>
+
+  <div class="tip">
+    💡 Scan akan tetap berfungsi offline (stok tersimpan di HP). Data dikirim ke Sheets hanya jika URL sudah diisi dan HP terhubung internet.
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════
+// MASTER DATA — 121 BARANG
+// ═══════════════════════════════════════════
+const MASTER = [
+  {barcode:"B001",name:"Garam Beryodium",cat:"Bumbu",unit:"bungkus",min:1},
+  {barcode:"B002",name:"Santan Instan 60gr",cat:"Bumbu",unit:"pcs",min:3},
+  {barcode:"B003",name:"Santan Instan 200gr",cat:"Bumbu",unit:"pcs",min:3},
+  {barcode:"B004",name:"Saus Tiram",cat:"Bumbu",unit:"botol",min:1},
+  {barcode:"B005",name:"Saus Sambal",cat:"Bumbu",unit:"botol",min:1},
+  {barcode:"B006",name:"Kecap",cat:"Bumbu",unit:"botol",min:1},
+  {barcode:"B007",name:"Saus Tomat",cat:"Bumbu",unit:"botol",min:1},
+  {barcode:"B008",name:"Bawang Merah",cat:"Bumbu",unit:"kg",min:0},
+  {barcode:"B009",name:"Bawang Putih",cat:"Bumbu",unit:"kg",min:0},
+  {barcode:"B010",name:"Bawang Bombay",cat:"Bumbu",unit:"pcs",min:0},
+  {barcode:"B011",name:"Tepung Bumbu Ayam Goreng",cat:"Bumbu",unit:"bungkus",min:2},
+  {barcode:"B012",name:"Tepung Bumbu Tempe Goreng",cat:"Bumbu",unit:"bungkus",min:2},
+  {barcode:"B013",name:"Bumbu Racik Ayam Goreng",cat:"Bumbu",unit:"bungkus",min:3},
+  {barcode:"B014",name:"Bumbu Racik Ayam Goreng Rempah",cat:"Bumbu",unit:"bungkus",min:3},
+  {barcode:"B015",name:"Bumbu Racik Sop",cat:"Bumbu",unit:"bungkus",min:3},
+  {barcode:"B016",name:"Ketumbar Bubuk",cat:"Bumbu",unit:"pcs",min:1},
+  {barcode:"B017",name:"Lada Putih Bubuk",cat:"Bumbu",unit:"pcs",min:1},
+  {barcode:"B018",name:"Lada Hitam Bubuk",cat:"Bumbu",unit:"pcs",min:1},
+  {barcode:"B019",name:"Bawang Putih Bubuk",cat:"Bumbu",unit:"pcs",min:1},
+  {barcode:"B020",name:"Micin",cat:"Bumbu",unit:"bungkus",min:1},
+  {barcode:"B021",name:"Kaldu Bubuk Ayam",cat:"Bumbu",unit:"bungkus",min:2},
+  {barcode:"B022",name:"Kaldu Bubuk Sapi",cat:"Bumbu",unit:"bungkus",min:2},
+  {barcode:"B023",name:"Kaldu Bubuk Jamur",cat:"Bumbu",unit:"bungkus",min:2},
+  {barcode:"B024",name:"Jahe",cat:"Bumbu",unit:"pcs",min:0},
+  {barcode:"B025",name:"Lengkuas",cat:"Bumbu",unit:"pcs",min:0},
+  {barcode:"B026",name:"Daun Jeruk",cat:"Bumbu",unit:"pcs",min:0},
+  {barcode:"B027",name:"Daun Salam",cat:"Bumbu",unit:"pcs",min:0},
+  {barcode:"B028",name:"Sereh",cat:"Bumbu",unit:"pcs",min:0},
+  {barcode:"B029",name:"Kunyit Bubuk",cat:"Bumbu",unit:"pcs",min:1},
+  {barcode:"B030",name:"Oregano",cat:"Bumbu",unit:"pcs",min:1},
+  {barcode:"B031",name:"Bumbu Nasi Goreng",cat:"Bumbu",unit:"bungkus",min:2},
+  {barcode:"M001",name:"Air Mineral Galon",cat:"Minuman",unit:"galon",min:1},
+  {barcode:"M002",name:"Susu UHT Full Cream 1lt",cat:"Minuman",unit:"pcs",min:3},
+  {barcode:"M003",name:"Susu UHT Mimi Strawberry",cat:"Minuman",unit:"pcs",min:3},
+  {barcode:"M004",name:"Susu UHT Mimi Cokelat",cat:"Minuman",unit:"pcs",min:3},
+  {barcode:"M005",name:"Teh Celup",cat:"Minuman",unit:"kotak",min:1},
+  {barcode:"M006",name:"Kopi Instan Hitam",cat:"Minuman",unit:"kotak",min:1},
+  {barcode:"M007",name:"Krimer Bubuk",cat:"Minuman",unit:"bungkus",min:1},
+  {barcode:"M008",name:"Susu Evaporasi",cat:"Minuman",unit:"kaleng",min:2},
+  {barcode:"M009",name:"Susu Kental Manis",cat:"Minuman",unit:"kaleng",min:2},
+  {barcode:"M010",name:"Air Mineral Botol 250ml",cat:"Minuman",unit:"dus",min:1},
+  {barcode:"M011",name:"Coklat Bubuk",cat:"Minuman",unit:"bungkus",min:1},
+  {barcode:"P001",name:"Detergent Cair",cat:"Pantry",unit:"botol",min:1},
+  {barcode:"P002",name:"Detergent Bubuk",cat:"Pantry",unit:"kg",min:1},
+  {barcode:"P003",name:"Cairan Pemutih",cat:"Pantry",unit:"botol",min:1},
+  {barcode:"P004",name:"Cairan Pakaian Warna",cat:"Pantry",unit:"botol",min:1},
+  {barcode:"P005",name:"Cairan Pel",cat:"Pantry",unit:"botol",min:1},
+  {barcode:"P006",name:"Sabun Cuci Piring",cat:"Pantry",unit:"botol",min:1},
+  {barcode:"P007",name:"Puding Bubuk Instan",cat:"Pantry",unit:"bungkus",min:2},
+  {barcode:"P008",name:"Puding Bayi",cat:"Pantry",unit:"bungkus",min:2},
+  {barcode:"P009",name:"Sereal",cat:"Pantry",unit:"kotak",min:1},
+  {barcode:"P010",name:"Chiki Rumput Laut",cat:"Pantry",unit:"pcs",min:0},
+  {barcode:"P011",name:"Astor",cat:"Pantry",unit:"pcs",min:0},
+  {barcode:"P012",name:"Es Krim",cat:"Pantry",unit:"pcs",min:0},
+  {barcode:"P013",name:"Yogurt Stik",cat:"Pantry",unit:"pcs",min:0},
+  {barcode:"P014",name:"Baterai AA",cat:"Pantry",unit:"pcs",min:2},
+  {barcode:"P015",name:"Baterai AAA",cat:"Pantry",unit:"pcs",min:2},
+  {barcode:"P016",name:"Selai",cat:"Pantry",unit:"botol",min:1},
+  {barcode:"R001",name:"Telur Ayam",cat:"Protein",unit:"pcs",min:6},
+  {barcode:"R002",name:"Daging Ayam",cat:"Protein",unit:"kg",min:0},
+  {barcode:"R003",name:"Daging Bebek",cat:"Protein",unit:"kg",min:0},
+  {barcode:"R004",name:"Daging Sapi Cincang",cat:"Protein",unit:"kg",min:0},
+  {barcode:"R005",name:"Iga",cat:"Protein",unit:"kg",min:0},
+  {barcode:"R006",name:"Telur Puyuh",cat:"Protein",unit:"pcs",min:0},
+  {barcode:"R007",name:"Ikan Lele",cat:"Protein",unit:"kg",min:0},
+  {barcode:"R008",name:"Ikan Hiu",cat:"Protein",unit:"kg",min:0},
+  {barcode:"R009",name:"Udang",cat:"Protein",unit:"kg",min:0},
+  {barcode:"R010",name:"Teri Nasi Basah",cat:"Protein",unit:"gr",min:0},
+  {barcode:"R011",name:"Teri Medan Asin",cat:"Protein",unit:"gr",min:0},
+  {barcode:"R012",name:"Nugget Dino",cat:"Protein",unit:"bungkus",min:1},
+  {barcode:"R013",name:"Nugget Biasa",cat:"Protein",unit:"bungkus",min:1},
+  {barcode:"R014",name:"Sosis",cat:"Protein",unit:"bungkus",min:1},
+  {barcode:"S001",name:"Daun Bawang",cat:"Sayur",unit:"ikat",min:0},
+  {barcode:"S002",name:"Daun Seledri",cat:"Sayur",unit:"ikat",min:0},
+  {barcode:"S003",name:"Tomat",cat:"Sayur",unit:"kg",min:0},
+  {barcode:"S004",name:"Jeruk Nipis",cat:"Sayur",unit:"pcs",min:0},
+  {barcode:"S005",name:"Cabe Merah Keriting",cat:"Sayur",unit:"kg",min:0},
+  {barcode:"S006",name:"Cabe Rawit",cat:"Sayur",unit:"kg",min:0},
+  {barcode:"K001",name:"Beras Premium 5kg",cat:"Sembako",unit:"karung",min:1},
+  {barcode:"K002",name:"Minyak Goreng 2ltr",cat:"Sembako",unit:"botol",min:1},
+  {barcode:"K003",name:"Gula Pasir 1kg",cat:"Sembako",unit:"kg",min:1},
+  {barcode:"K004",name:"Gula Aren 1kg",cat:"Sembako",unit:"kg",min:1},
+  {barcode:"K005",name:"Kacang Tanah",cat:"Sembako",unit:"bungkus",min:1},
+  {barcode:"K006",name:"Bihun",cat:"Sembako",unit:"bungkus",min:2},
+  {barcode:"K007",name:"Mie Instan Anak",cat:"Sembako",unit:"pcs",min:5},
+  {barcode:"K008",name:"Mie Instan Dewasa",cat:"Sembako",unit:"pcs",min:5},
+  {barcode:"K009",name:"Tepung Terigu 1kg",cat:"Sembako",unit:"kg",min:1},
+  {barcode:"K010",name:"Tepung Ketan Hitam 500gr",cat:"Sembako",unit:"bungkus",min:1},
+  {barcode:"K011",name:"Tepung Ketan Putih 500gr",cat:"Sembako",unit:"bungkus",min:1},
+  {barcode:"K012",name:"Tepung Beras",cat:"Sembako",unit:"bungkus",min:1},
+  {barcode:"K013",name:"Tepung Maizena",cat:"Sembako",unit:"bungkus",min:1},
+  {barcode:"K014",name:"Tepung Tapioka",cat:"Sembako",unit:"bungkus",min:1},
+  {barcode:"K015",name:"Keju",cat:"Sembako",unit:"pcs",min:1},
+  {barcode:"K016",name:"Margarine",cat:"Sembako",unit:"pcs",min:1},
+  {barcode:"K017",name:"Sarden",cat:"Sembako",unit:"kaleng",min:2},
+  {barcode:"T001",name:"Sabun Cair Dewasa",cat:"Toiletries",unit:"botol",min:1},
+  {barcode:"T002",name:"Sabun Cair Anak",cat:"Toiletries",unit:"botol",min:1},
+  {barcode:"T003",name:"Shampo Dewasa",cat:"Toiletries",unit:"botol",min:1},
+  {barcode:"T004",name:"Shampo Anak",cat:"Toiletries",unit:"botol",min:1},
+  {barcode:"T005",name:"Pasta Gigi Dewasa",cat:"Toiletries",unit:"pcs",min:1},
+  {barcode:"T006",name:"Pasta Gigi Anak",cat:"Toiletries",unit:"pcs",min:1},
+  {barcode:"T007",name:"Sikat Gigi Dewasa",cat:"Toiletries",unit:"pcs",min:1},
+  {barcode:"T008",name:"Sikat Gigi Anak",cat:"Toiletries",unit:"pcs",min:1},
+  {barcode:"T009",name:"Pembalut Malam",cat:"Toiletries",unit:"bungkus",min:1},
+  {barcode:"T010",name:"Pembalut Siang",cat:"Toiletries",unit:"bungkus",min:1},
+  {barcode:"T011",name:"Body Lotion Dewasa",cat:"Toiletries",unit:"botol",min:1},
+  {barcode:"T012",name:"Body Lotion Anak",cat:"Toiletries",unit:"botol",min:1},
+  {barcode:"T013",name:"Deodoran",cat:"Toiletries",unit:"pcs",min:1},
+  {barcode:"T014",name:"Minyak Telon",cat:"Toiletries",unit:"botol",min:1},
+  {barcode:"T015",name:"Minyak Kayu Putih",cat:"Toiletries",unit:"botol",min:1},
+  {barcode:"T016",name:"Alat Cukur",cat:"Toiletries",unit:"pcs",min:1},
+  {barcode:"T017",name:"Tissue Wajah",cat:"Toiletries",unit:"kotak",min:2},
+  {barcode:"T018",name:"Tissue Dapur",cat:"Toiletries",unit:"roll",min:2},
+  {barcode:"T019",name:"Korek Kuping",cat:"Toiletries",unit:"kotak",min:1},
+  {barcode:"T020",name:"Popok Bayi XXL",cat:"Toiletries",unit:"pcs",min:5},
+  {barcode:"T021",name:"Popok Bayi XL",cat:"Toiletries",unit:"pcs",min:5},
+  {barcode:"T022",name:"Minyak Rambut Anak",cat:"Toiletries",unit:"botol",min:1},
+  {barcode:"T023",name:"Minyak Rambut Dewasa",cat:"Toiletries",unit:"botol",min:1},
+  {barcode:"T024",name:"Parfum Anak",cat:"Toiletries",unit:"botol",min:1},
+  {barcode:"T025",name:"Parfum Dewasa",cat:"Toiletries",unit:"botol",min:1},
+  {barcode:"T026",name:"Kapas Wajah",cat:"Toiletries",unit:"bungkus",min:1},
+  {barcode:"T027",name:"Sunscreen Anak",cat:"Toiletries",unit:"tube",min:1},
+  {barcode:"T028",name:"Sunscreen Dewasa",cat:"Toiletries",unit:"tube",min:1},
+  {barcode:"T029",name:"Face Cream Anak",cat:"Toiletries",unit:"pcs",min:1},
+  {barcode:"T030",name:"Moisturizer Dewasa",cat:"Toiletries",unit:"pcs",min:1},
+  {barcode:"T031",name:"Minyak Angin Dewasa",cat:"Toiletries",unit:"botol",min:1},
+];
+
+const CAT_ICON = {
+  Bumbu:"🧂", Minuman:"🥛", Pantry:"🏠", Protein:"🥩",
+  Sayur:"🥬", Sembako:"🛒", Toiletries:"🧴"
+};
+
+// ═══════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════
+let inventory = [];
+let scannerRunning = false;
+let html5Scanner = null;
+let currentBarcode = null;
+let currentQty = 1;
+let currentFilter = 'Semua';
+const SHEETS_KEY = 'sheetsUrl_v1';
+const INV_KEY    = 'inventory_v3'; // v3 = pakai kode baru
+
+function loadData() {
+  const saved = localStorage.getItem(INV_KEY);
+  if (saved) {
+    inventory = JSON.parse(saved);
+  } else {
+    resetData(true);
+  }
+}
+
+function resetData(silent) {
+  // Bangun stok awal dari MASTER (semua qty=0)
+  inventory = MASTER.map(m => ({
+    barcode: m.barcode,
+    name:    m.name,
+    cat:     m.cat,
+    unit:    m.unit,
+    min:     m.min,
+    qty:     0,
+    updated: '—'
+  }));
+  saveData();
+  if (!silent) {
+    renderList(inventory);
+    document.getElementById('totalBadge').textContent = inventory.length + ' barang';
+    showToast('✅ ' + inventory.length + ' barang berhasil dimuat ulang!');
+  }
+}
+
+function saveData() {
+  localStorage.setItem(INV_KEY, JSON.stringify(inventory));
+}
+
+// ═══════════════════════════════════════════
+// TABS
+// ═══════════════════════════════════════════
+function switchTab(tab, el) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('tab-' + tab).classList.add('active');
+  if (tab === 'list') { buildFilters(); renderList(inventory); }
+  if (tab !== 'scan' && scannerRunning) stopScanner();
+  if (tab === 'setup') {
+    const saved = localStorage.getItem(SHEETS_KEY) || '';
+    document.getElementById('sheetsUrl').value = saved;
+  }
+}
+
+// ═══════════════════════════════════════════
+// SCANNER
+// ═══════════════════════════════════════════
+function toggleScanner() {
+  scannerRunning ? stopScanner() : startScanner();
+}
+
+function startScanner() {
+  document.getElementById('qr-placeholder').style.display = 'none';
+  document.getElementById('qr-reader').style.display = 'block';
+  document.getElementById('btnScan').innerHTML = '⏹ Stop Scanner';
+  scannerRunning = true;
+
+  html5Scanner = new Html5Qrcode("qr-reader");
+  html5Scanner.start(
+    { facingMode: "environment" },
+    { fps: 12, qrbox: { width: 230, height: 230 } },
+    (decoded) => { handleCode(decoded.trim()); },
+    () => {}
+  ).catch(() => {
+    showToast('❌ Izin kamera ditolak', true);
+    stopScanner();
+  });
+}
+
+function stopScanner() {
+  if (html5Scanner) {
+    html5Scanner.stop().then(() => { html5Scanner.clear(); html5Scanner = null; }).catch(()=>{});
+  }
+  document.getElementById('qr-placeholder').style.display = 'flex';
+  document.getElementById('qr-reader').style.display = 'none';
+  document.getElementById('btnScan').innerHTML = '📷 Mulai Scan QR Code';
+  scannerRunning = false;
+}
+
+function demoScan() {
+  const demos = ['K001','M002','B005','T017','R001'];
+  handleCode(demos[Math.floor(Math.random() * demos.length)]);
+}
+
+function handleCode(code) {
+  if (scannerRunning) stopScanner();
+  currentBarcode = code;
+  currentQty = 1;
+  document.getElementById('qtyVal').textContent = '1';
+  document.getElementById('rcCode').textContent = code;
+
+  const item = inventory.find(i => i.barcode === code);
+  if (item) {
+    document.getElementById('rcName').textContent = item.name;
+    document.getElementById('rcMeta').textContent =
+      CAT_ICON[item.cat] + ' ' + item.cat + ' · Stok: ' + item.qty + ' ' + item.unit;
+  } else {
+    document.getElementById('rcName').textContent = '⚠️ Kode tidak dikenal';
+    document.getElementById('rcMeta').textContent = 'Kode ini tidak ada di daftar 121 barang';
+  }
+  document.getElementById('resultCard').classList.add('visible');
+  document.getElementById('resultCard').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function changeQty(d) {
+  currentQty = Math.max(0, currentQty + d);
+  document.getElementById('qtyVal').textContent = currentQty;
+}
+
+function hideResult() {
+  document.getElementById('resultCard').classList.remove('visible');
+  currentBarcode = null;
+}
+
+function saveItem(aksi) {
+  if (!currentBarcode) return;
+  const item = inventory.find(i => i.barcode === currentBarcode);
+  if (!item) { showToast('❌ Kode tidak ada di daftar', true); return; }
+
+  if (aksi === 'tambah') item.qty += currentQty;
+  else item.qty = Math.max(0, item.qty - currentQty);
+
+  const now = new Date();
+  item.updated = now.getDate() + ' ' + ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agt','Sep','Okt','Nov','Des'][now.getMonth()];
+  saveData();
+  hideResult();
+  showToast('✅ ' + item.name + ' → ' + item.qty + ' ' + item.unit);
+
+  // Kirim ke Google Sheets — GET + query string (bypass CORS)
+  const url = localStorage.getItem(SHEETS_KEY);
+  if (url && url.startsWith('http')) {
+    const params = new URLSearchParams({
+      barcode:  item.barcode,
+      nama:     item.name,
+      aksi:     aksi,
+      jumlah:   currentQty,
+      stokBaru: item.qty,
+      satuan:   item.unit,
+      kategori: item.cat
+    });
+    const img = new Image();
+    img.src = url + '?' + params.toString();
+  }
+}
+
+// ═══════════════════════════════════════════
+// LIST & FILTER
+// ═══════════════════════════════════════════
+const CATS = ['Semua','Bumbu','Minuman','Pantry','Protein','Sayur','Sembako','Toiletries'];
+
+function buildFilters() {
+  const row = document.getElementById('filterRow');
+  row.innerHTML = CATS.map(c =>
+    `<div class="fbtn ${c===currentFilter?'active':''}" onclick="setFilter('${c}',this)">${c}</div>`
+  ).join('');
+}
+
+function setFilter(cat, el) {
+  currentFilter = cat;
+  document.querySelectorAll('.fbtn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  const q = document.querySelector('.search-bar') ? document.querySelector('.search-bar').value : '';
+  filterList(q);
+}
+
+function filterList(q) {
+  let data = inventory;
+  if (currentFilter !== 'Semua') data = data.filter(i => i.cat === currentFilter);
+  if (q) data = data.filter(i => i.name.toLowerCase().includes(q.toLowerCase()) || i.barcode.toLowerCase().includes(q.toLowerCase()));
+  renderList(data);
+}
+
+function renderList(data) {
+  const el = document.getElementById('itemList');
+  document.getElementById('countBadge').textContent = data.length + ' item';
+  document.getElementById('totalBadge').textContent = inventory.length + ' barang';
+
+  if (!data.length) {
+    el.innerHTML = '<div class="empty-state">Tidak ada barang ditemukan</div>';
+    return;
+  }
+  el.innerHTML = data.map(item => `
+    <div class="item-row">
+      <div class="item-icon">${CAT_ICON[item.cat] || '📦'}</div>
+      <div class="item-info">
+        <div class="name">${item.name}</div>
+        <div class="code"># ${item.barcode}</div>
+        <div class="upd">${item.updated}</div>
+      </div>
+      <div class="item-qty">
+        <div class="qty ${item.qty <= item.min && item.min > 0 ? 'qty-low' : item.qty > 0 ? 'qty-ok' : ''}">${item.qty}</div>
+        <span class="unit">${item.unit}</span>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ═══════════════════════════════════════════
+// SETUP
+// ═══════════════════════════════════════════
+function saveUrl() {
+  const url = document.getElementById('sheetsUrl').value.trim();
+  if (!url.startsWith('http')) { showToast('❌ URL tidak valid', true); return; }
+  localStorage.setItem(SHEETS_KEY, url);
+  showToast('✅ URL tersimpan!');
+}
+
+// ═══════════════════════════════════════════
+// TOAST
+// ═══════════════════════════════════════════
+function showToast(msg, err) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast' + (err ? ' err' : '');
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+// ═══════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════
+loadData();
+document.getElementById('totalBadge').textContent = inventory.length + ' barang';
+</script>
+</body>
+</html>
